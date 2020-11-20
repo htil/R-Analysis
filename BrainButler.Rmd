@@ -1,0 +1,126 @@
+---
+title: "Brain Butler Chloe"
+output: html_notebook
+---
+
+```{r}
+library(pastecs)
+library(ggplot2)
+library(plotly)
+library(data.table)
+library(hrbrthemes)
+library("ggpubr")
+
+# Read in the data from n100.txt
+n100 <- fread("n100.txt")
+
+# Create separate data frame that filter out the solving method and change of screen state
+# Filters out all of participant 3 and 8 data. 
+fact <- n100[ which(n100$Type=='Fact' & n100$Participant!='p8' & n100$Participant!='p3')]
+procedure <- n100[ which(n100$Type=='Procedure' &  n100$Participant!='p8' & n100$Participant!='p3' ) ]
+dark <- n100[ which(n100$Type=='Dark' & n100$Participant!='p8' & n100$Participant!='p3')]
+light <- n100[ which(n100$Type=='Light'& n100$Participant!='p8' & n100$Participant!='p3')]
+
+# Get the mean of the TP9 channel for fact retrieval 
+factMean <- mean(fact$TP9)
+
+# get descriptive statistics for all channels of each type as data frame
+factStat <- stat.desc(fact[, c("TP9", "TP10", "AF7", "AF8")])
+procStat <- stat.desc(procedure[, c("TP9", "TP10", "AF7", "AF8")])
+darkStat <- stat.desc(dark[, c("TP9", "TP10", "AF7", "AF8")])
+lightStat <- stat.desc(light[, c("TP9", "TP10", "AF7", "AF8")])
+
+#Extract the mean of TP9 from fact
+procedureMean <- as.numeric(factStat[c("mean"),c("TP9")])
+
+# compare all mean data for each channel and type
+channelName <- c("TP9", "TP10", "AF7", "AF8")
+factMean <- as.numeric(factStat[c("mean"),])
+procMean <- as.numeric(procStat[c("mean"),])
+darkMean <- as.numeric(darkStat[c("mean"),])
+lightMean <- as.numeric(lightStat[c("mean"),])
+allMean <- data.frame(channelName, factMean, procMean, darkMean, lightMean)
+
+
+# Creates density plot for values of the AF8 channel where fact retrieval was used
+fullData <- rbind(fact, light)
+ggdensity(fact$AF8,  main = "fact$AF8", xlab = "X")
+ggdensity(light$AF8,  main = "light$AF8", xlab = "X")
+
+```
+
+
+
+```{r}
+library(ggplot2)
+library(plotly)
+library(data.table)
+library(hrbrthemes)
+library("ggpubr")
+
+# Read in the data from n100.txt
+n100 <- fread("n100.txt")
+
+# Filter out data for participant 2 light and dark
+#n100_dark_p2 <- n100[which(n100$Type=='Dark' & n100$Participant=='p4')]
+#n100_light_p2 <- n100[which(n100$Type=='Light' & n100$Participant=='p4')]
+n100_dark_p2 <- n100[which(n100$Type=='Dark'& n100$Participant!='p8' & n100$Participant!='p3')]
+n100_light_p2 <- n100[which(n100$Type=='Light'& n100$Participant!='p8' & n100$Participant!='p3')]
+
+darkDat <- data.frame(x = rep(1:dim(n100_dark_p2)[1]), type = rep("dark", dim(n100_dark_p2)[1]), tp9 =n100_dark_p2$TP9, af7 =n100_dark_p2$AF7, af8 =n100_dark_p2$AF8, tp10 =n100_dark_p2$TP10)
+
+lightDat <- data.frame(x = rep(1:dim(n100_light_p2)[1]), type = rep("light", dim(n100_light_p2)[1]), tp9 =n100_light_p2$TP9, af7 =n100_light_p2$AF7, af8 =n100_light_p2$AF8, tp10 =n100_light_p2$TP10)
+
+# Merges the data from dark and light into a larger data struct
+fullData <- rbind(darkDat, lightDat)
+
+# Scatterplot comparison between light and dark data for each channel
+ggplot(fullData, aes(x=x, y=tp9, color=type)) + geom_point(shape=1)
+ggplot(fullData, aes(x=x, y=af7, color=type)) + geom_point(shape=1)
+ggplot(fullData, aes(x=x, y=af8, color=type)) + geom_point(shape=1)
+ggplot(fullData, aes(x=x, y=tp10, color=type)) + geom_point(shape=1)
+```
+
+```{r}
+library(ggplot2)
+library(plotly)
+library(data.table)
+library(hrbrthemes)
+library("ggpubr")
+
+
+# Read in the data from n100.txt and filter
+n100 <- fread("n100.txt")
+data <- n100[ which((n100$Type=='Dark' | n100$Type == "Light" )& n100$Participant!='p8' & n100$Participant!='p3')]
+
+# Calculate total mean and means (by participant)
+subject.means <- tapply(data$TP10, list(data$Participant, data$Type), mean)
+colMeans(subject.means)
+
+# paired sample t-test
+t.test(subject.means[,"Light"], subject.means[,"Dark"], paired=T)
+
+# histogram
+by.subj.differences <- subject.means[,"Light"] - subject.means[,"Dark"]
+
+library(MASS)
+truehist(by.subj.differences)
+
+# Normal Q-Q Plot 
+# a linear graph could mean normally dist data
+qqnorm(by.subj.differences)       
+
+# Statistical test of normality (Shapiro-Wilk)
+# null hyp: the data is not normally distributed
+# extremely low values of p could mean not normally distributed
+shapiro.test(by.subj.differences)
+
+# Wilcoxon Test (2-sample)
+wilcox.test(subject.means[,"Light"], subject.means[,"Dark"])
+
+# Wilcox Test (1-sample)
+wilcox.test(by.subj.differences)
+
+
+```
+
